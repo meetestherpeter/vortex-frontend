@@ -11,7 +11,23 @@ const preview: Preview = {
   ],
   parameters: {
     a11y: {
-      test: "todo",
+      // Block CI on serious/critical axe violations across all stories.
+      test: "error",
+      config: {
+        rules: [
+          {
+            // Storybook's own chrome/iframe markup is outside our control.
+            id: "region",
+            enabled: false,
+          },
+        ],
+      },
+      options: {
+        runOnly: {
+          type: "tag",
+          values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"],
+        },
+      },
     },
     controls: {
       matchers: {
