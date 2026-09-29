@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { useToastStore, type ToastVariant } from "@/store/toast";
+import { useAnnounce } from "@/components/Announcer";
 
 const VARIANT_STYLES: Record<ToastVariant, string> = {
   success: "border-vx-sage/40 bg-vx-sage-bg text-vx-sage",
@@ -11,6 +13,17 @@ const VARIANT_STYLES: Record<ToastVariant, string> = {
 
 export function ToastViewport() {
   const { toasts, dismissToast, pauseToast, resumeToast } = useToastStore();
+  const announce = useAnnounce();
+
+  useEffect(() => {
+    const latest = toasts[toasts.length - 1];
+    if (!latest) return;
+    announce(latest.message, {
+      politeness: latest.variant === "error" ? "assertive" : "polite",
+      key: `toast:${latest.id}`,
+      source: "toast",
+    });
+  }, [toasts, announce]);
 
   if (toasts.length === 0) return null;
 
