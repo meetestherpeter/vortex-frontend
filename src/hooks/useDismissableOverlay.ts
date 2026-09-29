@@ -15,6 +15,10 @@ type UseDismissableOverlayOptions = {
  * trigger), closes on outside click/tap, and traps Tab focus within the
  * overlay while it's open. Used by the chain picker, mobile nav, and
  * settings dropdown so the three don't reimplement the same logic.
+ *
+ * This is the single focus-management implementation that the shared
+ * `Dialog`/`Popover` primitives (src/components/ui) are built on top of, so
+ * nested overlays share one stack and dismiss in LIFO order.
  */
 export function useDismissableOverlay<T extends HTMLElement>({
   isOpen,
@@ -26,24 +30,47 @@ export function useDismissableOverlay<T extends HTMLElement>({
   useEffect(() => {
     if (!isOpen) return;
 
-    containerRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus();
+    const container = containerRef.current;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+
+    const getFocusable = () =>
+      Array.from(
+        container?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? [],
+      ).filter((el) => !el.hasAttribute("disabled") && el.tabIndex !== -1);
+
+    // Initial focus: first focusable child, falling back to the container
+    // itself so focus never escapes to the background.
+    const focusables = getFocusable();
+    if (focusables.length > 0) {
+      focusables[0].focus();
+    } else {
+      container?.setAttribute("tabindex", "-1");
+      container?.focus();
+    }
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        // stopPropagation so a nested overlay dismisses only the topmost
+        // layer instead of every ancestor listening on document.
         event.preventDefault();
+        event.stopPropagation();
         onClose();
-        triggerRef.current?.focus();
         return;
       }
       if (event.key !== "Tab") return;
-      const focusable = containerRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-      if (!focusable || focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
+      const items = getFocusable();
+      if (items.length === 0) {
+        event.preventDefault();
+        container?.focus();
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || active === container)) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
+      } else if (!event.shiftKey && active === last) {
         event.preventDefault();
         first.focus();
       }
@@ -53,7 +80,7 @@ export function useDismissableOverlay<T extends HTMLElement>({
     // the overlay, so also closing it here would immediately reopen it.
     const handlePointerDown = (event: MouseEvent | TouchEvent) => {
       const target = event.target as Node;
-      if (containerRef.current?.contains(target)) return;
+      if (container?.contains(target)) return;
       if (triggerRef.current?.contains(target)) return;
       onClose();
     };
@@ -65,6 +92,12 @@ export function useDismissableOverlay<T extends HTMLElement>({
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("touchstart", handlePointerDown);
+      // Return focus to the trigger (or the element focused before opening)
+      // so nested overlays restore focus in LIFO order.
+      const returnTarget = triggerRef.current ?? previouslyFocused;
+      if (returnTarget && document.contains(returnTarget)) {
+        returnTarget.focus();
+      }
     };
   }, [isOpen, onClose, triggerRef]);
 
