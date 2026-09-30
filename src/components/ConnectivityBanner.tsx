@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useConnectivity } from "@/hooks/useConnectivity";
 import { useAnnounce } from "@/components/Announcer";
+import { useTranslation } from "@/lib/i18n/I18nProvider";
 
 /**
  * App-wide offline/connectivity-loss banner.
@@ -21,6 +22,7 @@ import { useAnnounce } from "@/components/Announcer";
  * (see docs/accessibility.md for the live-region policy).
  */
 export function ConnectivityBanner() {
+  const { t } = useTranslation();
   const { connectivity } = useConnectivity();
   const [visible, setVisible] = useState(false);
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -95,7 +97,7 @@ export function ConnectivityBanner() {
               strokeLinejoin="round"
             />
           </svg>
-          <span>You appear to be offline — reconnecting&hellip;</span>
+          <span>{t("connectivity.offline")}</span>
         </>
       ) : (
         <>
@@ -114,7 +116,7 @@ export function ConnectivityBanner() {
               strokeLinejoin="round"
             />
           </svg>
-          <span>Back online — refreshing data&hellip;</span>
+          <span>{t("connectivity.online")}</span>
         </>
       )}
     </div>

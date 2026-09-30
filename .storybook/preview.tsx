@@ -11,7 +11,7 @@ const preview: Preview = {
   ],
   parameters: {
     a11y: {
-      // Block CI on serious/critical axe violations across all stories.
+      // Enforced: axe violations fail `npm run test:storybook` in CI.
       test: "error",
       config: {
         rules: [

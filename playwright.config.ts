@@ -36,7 +36,9 @@ export default defineConfig({
   webServer: {
     command: "npm run dev",
     url: "http://localhost:3000",
-    reuseExistingServer: !isCI,
+    reuseExistingServer: !process.env.CI,
+    // `next dev` compiles on first request; give cold CI runners headroom.
+    timeout: 180_000,
     env: {
       NEXT_PUBLIC_API_URL: "http://localhost:4000",
     },
